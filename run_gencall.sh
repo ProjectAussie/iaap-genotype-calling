@@ -13,6 +13,9 @@ aws s3 sync outputs s3://scratch-embark/iaap-test/
 # Grab canfam 4 as reference data
 aws s3 cp s3://embark-data-drops/canFam4/canFam4.fa .
 aws s3 cp s3://embark-data-drops/canFam4/canFam4.fa.fai .
+# Rename chrX to X, which is what ILMN expects based on hg19
+cat canFam4.fa | sed -r 's/chr([0-9XM]*)/\1/g' > canFam4.fa
+cat canFam4.fa.fai | sed -r 's/chr([0-9XM]*)/\1/g' > canFam4.fa.fai
 
 # Convert outputs to vcf
 # Didn't work, only human supported 
