@@ -10,12 +10,45 @@ aws s3 sync s3://illumina-embark-sample-level-deliveries/2021-12-14/310018052348
 # Download an example idat from a new dog
 iaap-cli gencall Embark_2021_260k_20063270_A1.bpm Embark_2021_260k_20063270_A1_20211122.egt outputs -f idats -g
 aws s3 sync outputs s3://scratch-embark/iaap-test/
+
 # Grab canfam 4 as reference data
-aws s3 cp s3://embark-data-drops/canFam4/canFam4.fa .
-aws s3 cp s3://embark-data-drops/canFam4/canFam4.fa.fai .
+aws s3 cp s3://embark-data-drops/canFam3/canFam3.1_and_SRY.fa .
+aws s3 cp s3://embark-data-drops/canFam3/canFam3.1_and_SRY.fa.fai .
+# bwa mem index
+aws s3 cp s3://embark-data-drops/canFam3/canFam3.1_and_SRY.fa.bwt .
+aws s3 cp s3://embark-data-drops/canFam3/canFam3.1_and_SRY.fa.dict .
+aws s3 cp s3://embark-data-drops/canFam3/canFam3.1_and_SRY.fa.sa .
+
+
 # Rename chrX to X, which is what ILMN expects based on hg19
-cat canFam4.fa | sed -r 's/chr([0-9XM]*)/\1/g' > canFam4.fa
-cat canFam4.fa.fai | sed -r 's/chr([0-9XM]*)/\1/g' > canFam4.fa.fai
+cat canFam3.1_and_SRY.fa | sed -r 's/chr([0-9YXM]*)/\1/g' > canFam3.1_and_SRY.fa
+cat canFam3.1_and_SRY.fa.fai | sed -r 's/chr([0-9YXM]*)/\1/g' > canFam3.1_and_SRY.fa.fai
+
+
+# Cut header and footer
+tail -n +9 Embark_2021_260k_20063270_A1.csv > Embark_2021_260k_20063270_A1_no_header.csv
+head -n -24 Embark_2021_260k_20063270_A1_no_header.csv > Embark_2021_260k_20063270_A1_no_footer.csv
+
+# Identify alignment of sequences in the extended .csv manifest
+# First, cut up the csv to extract the reference sequences
+cut -d, -f18 Embark_2021_260k_20063270_A1_no_footer.csv > fa_sequences.txt
+# Replace the [A/G] with the first letter
+sed -i -E 's/\[([ATGCNDI])\/[ATGCNDI]\]/\1/' fa_sequences.txt
+
+# Get the probe IDs, and add > to indicate its a fasta sequence
+cut -d, -f2 Embark_2021_260k_20063270_A1_no_footer.csv > fa_titles.txt
+sed -i -e 's/^/>/' fa_titles.txt
+
+# Zip together the sequences and the ID/title lines to for a valid fasta file
+paste -d '\n' fa_titles.txt fa_sequences.txt > Embark_2021_260k_20063270_A1.fa
+
+# Now align
+bwa/bwa mem canFam3.1_and_SRY.fa Embark_2021_260k_20063270_A1.fa > beadpool_alignments.sam
+
+# Get rid of the header and pull out the FLAG field
+# Extract the strand flag out of the FLAG field
+tail -n +3271 beadpool_alignments.sam | cut -f2 > beadpool_alignments_flags.txt
+perl -ane 'if ($.&0x40) { print "+\n" } else {print "-\n"}' beadpool_alignments_flags.txt > beadpool_strand.txt
 
 # Convert outputs to vcf
 # Didn't work, only human supported 
@@ -39,7 +72,7 @@ sed 's/TopGenomicSeq,+/TopGenomicSeq,refstrand/' /Embark_2021_260k_20063270_A1_t
 python2 GTCtoVCF/gtc_to_vcf.py \
     --gtc-paths /outputs/205881370069_R11C02.gtc \
     --manifest-file /Embark_2021_260k_20063270_A1_tweaked2.csv \
-    --genome-fasta-file /canFam4.fa \
+    --genome-fasta-file /canFam3.1_and_SRY.fa \
     --skip-indels # Skip indels required when using bpm manifest. Need extended csv manifest.
     
 aws s3 sync output.vcf s3://scratch-embark/iaap-test/
