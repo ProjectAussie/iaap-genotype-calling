@@ -40,9 +40,7 @@ RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py && \
     
 
 # # Install ILMN IAAP CLI for idat to gtc conversion
-RUN --mount=type=secret,id=awscredentials,target=/root/.aws/credentials \
-    export AWS_PROFILE=prod && \
-    export AWS_CONFIG_FILE=/root/.aws/credentials && \
+RUN --mount=type=secret,id=awscredentials,uid=0000 export AWS_CONFIG_FILE=/run/secrets/awscredentials && \
     cd $HOME && \
     aws s3 cp s3://scratch-embark/iaap/iaap-cli-linux-x64-1.1.0-sha.80d7e5b3d9c1fdfc2e99b472a90652fd3848bbc7.tar.gz . && \
     tar -xf $HOME/iaap-cli-linux-x64-1.1.0-sha.80d7e5b3d9c1fdfc2e99b472a90652fd3848bbc7.tar.gz && \
