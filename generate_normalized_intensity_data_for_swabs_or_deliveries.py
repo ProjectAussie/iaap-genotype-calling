@@ -152,7 +152,7 @@ def main(
         print("Generating .gtc files from .idats for delivery " + _delivery_name)
         cluster_file_path = os.path.join(delivery_data_dir, cluster_file_s3_path.split("/")[-1])
         s3.download_file(cluster_file_s3_path, cluster_file_path)
-        beadpool_manifest_path = os.path.join(delivery_data_dir, beadpool_manifest_name)
+        beadpool_manifest_path = os.path.join(delivery_data_dir, beadpool_manifest_s3_path)
         s3.download_file(beadpool_manifest_s3_path, beadpool_manifest_path)
         _make_gtcs_from_idats_for_dir(delivery_data_dir, beadpool_manifest_path, cluster_file_path)
         print("Finished generating .gtcs")
