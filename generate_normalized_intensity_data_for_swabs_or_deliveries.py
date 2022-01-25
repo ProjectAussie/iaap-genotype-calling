@@ -1,12 +1,33 @@
+"""
+This script generates genotype call (.gtc) files
+from raw intensity data (.idats) and extracts
+NormR and NormTheta values at all array markers
+for a list of dogs (swab codes), or all dogs in specified deliveries.
+
+The operations the script performs require a lot of disk space,
+and it has not been tested on a lower RAM machine,
+so it is recommended that it be run on an ec2 instance instead of locally.
+
+TODO: add functionality to restrict data to a subset of markers rather than entire array
+
+Example usage:
+
+`python generate_normalized_intensity_data_for_swabs_or_deliveries.py
+    --delivery-names embark_2021-12-26_0609
+    --cluster-file-s3-path s3://illumina-embark-data/Cluster_Files_Updated_Monthly/Embark_2021_260k_20063270_A1_20211122.egt
+    --beadpool-manifest-s3-path s3://illumina-embark-data/beadpool-manifests/Embark_2021_260k_20063270_A1.bpm
+    --output-dir /home/ubuntu/idat_to_gtc_test
+`
+
+"""
+
 import argparse
 import functools
-import json
 import os
 import shutil
-from typing import List, Tuple
+from typing import List
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import List, Tuple
 import pandas as pd
 import numpy as np
 from IlluminaBeadArrayFiles import GenotypeCalls, BeadPoolManifest
@@ -83,15 +104,6 @@ def _get_NormR_NormTheta_values_from_gtc(gtc_file, bpm_normalization_lookups, bp
     return marker_normalized_intensity_vals_df
 
 
-def calculate_NormR_NormTheta_from_gtc():
-    gtc_file = os.path.join(delivery_data_dir, f"gtcs/{sentrix_id}_{sentrix_position}.gtc")
-    # Generate .tsv file containing NormR, NormTheta
-    marker_normalized_intensity_vals_df = _get_NormR_NormTheta_values_from_gtc(
-        gtc_file, bpm_normalization_lookups, bpm_names,
-    )
-    marker_normalized_intensity_vals_df.reset_index().to_csv(f"{delivery_data_dir}/{genotype_id}_normalized_intensity.tsv", index=False, sep="\t")
-
-
 def _make_normalized_intensity_file_from_idats_for_record(delivery_data_dir, bpm_normalization_lookups, bpm_names, record):
     sentrix_id = record["sentrix_id"]
     sentrix_position = record["sentrix_position"]
@@ -123,7 +135,7 @@ def main(
         delivery_list = delivery_names.split(",")
         target_delivery_swabs_df = _get_swab_codes_for_delivery_names(delivery_list)
         deliveries_to_run_df = deliveries_to_run_df.append(target_delivery_swabs_df, ignore_index=True)
-    
+
     print(deliveries_to_run_df.value_counts(subset=["illumina_delivery_name"]))
 
     for _delivery_name, _delivery_df in deliveries_to_run_df.groupby("illumina_delivery_name"):
@@ -152,7 +164,7 @@ def main(
         print("Generating .gtc files from .idats for delivery " + _delivery_name)
         cluster_file_path = os.path.join(delivery_data_dir, cluster_file_s3_path.split("/")[-1])
         s3.download_file(cluster_file_s3_path, cluster_file_path)
-        beadpool_manifest_path = os.path.join(delivery_data_dir, beadpool_manifest_s3_path)
+        beadpool_manifest_path = os.path.join(delivery_data_dir, beadpool_manifest_s3_path.split("/")[-1])
         s3.download_file(beadpool_manifest_s3_path, beadpool_manifest_path)
         _make_gtcs_from_idats_for_dir(delivery_data_dir, beadpool_manifest_path, cluster_file_path)
         print("Finished generating .gtcs")
@@ -167,7 +179,7 @@ def main(
         print("Finished generating NormR, NormTheta .tsvs")
 
         # Delete .idats and .gtcs
-        #shutil.rmtree(idats_dir_path)
+        shutil.rmtree(idats_dir_path)
         #shutil.rmtree(gtc_dir_path)
 
 
@@ -197,3 +209,4 @@ if __name__ == "__main__":
         swab_code_file=args.swab_code_file,
         output_dir=args.output_dir,
     )
+
