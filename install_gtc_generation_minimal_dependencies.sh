@@ -4,8 +4,8 @@
 htsversion=1.3
 sudo curl -L https://github.com/samtools/htslib/releases/download/${htsversion}/htslib-${htsversion}.tar.bz2 | tar xj && \
     (cd htslib-${htsversion} && /
-    ./configure --enable-plugins --with-plugin-path='$(libexecdir)/htslib:/usr/libexec/htslib' && /
-    make install)
+    sudo ./configure --enable-plugins --with-plugin-path='$(libexecdir)/htslib:/usr/libexec/htslib' && /
+    sudo make install)
 
 # Install Illumina iaap-cli
 cd $HOME && \
@@ -17,6 +17,7 @@ cd $HOME && \
 export PATH="$HOME/iaap-cli-linux-x64-1.1.0-sha.80d7e5b3d9c1fdfc2e99b472a90652fd3848bbc7/iaap-cli:$PATH"
 
 # Install BeadArrayFiles library for Illumina file manipulation
+cd $HOME
 sudo apt-get update -y
 sudo apt-get install -y python-distutils-extra
 sudo apt-get install -y  python3-distutils
